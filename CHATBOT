@@ -1,0 +1,39 @@
+import gradio as gr
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+# Load model and tokenizer (GPT-2 for example)
+model_name = "microsoft/DialoGPT-medium"  # lightweight chatbot model
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name)
+
+# Chat history
+chat_history = []
+
+# Chat function
+def chat(user_input):
+    global chat_history
+
+    # Encode input and history
+    new_user_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
+    bot_input_ids = torch.cat([torch.tensor([]).long().unsqueeze(0)] + chat_history + [new_user_input_ids], dim=-1) if chat_history else new_user_input_ids
+
+    # Generate response
+    chat_history.append(new_user_input_ids)
+    output_ids = model.generate(bot_input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
+    reply = tokenizer.decode(output_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
+
+    # Save bot response to history
+    chat_history.append(output_ids[:, bot_input_ids.shape[-1]:])
+    return reply
+
+# Gradio UI
+interface = gr.Interface(
+    fn=chat,
+    inputs=gr.Textbox(lines=2, label="You"),
+    outputs=gr.Textbox(label="Chatbot"),
+    title="AI Chatbot (DialoGPT)",
+    description="A simple chatbot using Microsoft's DialoGPT model."
+)
+
+interface.launch()
