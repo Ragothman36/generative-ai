@@ -1,0 +1,32 @@
+import gradio as gr
+from transformers import MarianMTModel, MarianTokenizer
+import torch
+
+# Define model name (English to German example)
+model_name = "Helsinki-NLP/opus-mt-en-de"
+
+# Load tokenizer and model
+tokenizer = MarianTokenizer.from_pretrained(model_name)
+model = MarianMTModel.from_pretrained(model_name)
+
+# Translation function
+def translate(text):
+    # Tokenize input
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    # Generate translation
+    translated = model.generate(**inputs, max_length=100)
+    # Decode output
+    result = tokenizer.decode(translated[0], skip_special_tokens=True)
+    return result
+
+# Gradio interface
+interface = gr.Interface(
+    fn=translate,
+    inputs=gr.Textbox(lines=3, label="Enter text in English"),
+    outputs=gr.Textbox(label="Translated text in German"),
+    title="AI Translator (EN → DE)",
+    description="Translate English text to German using a pre-trained AI model."
+)
+
+# Launch the app
+interface.launch()
